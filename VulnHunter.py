@@ -81,7 +81,6 @@ class VulnerabilityScanner:
                 url = f"{subdomain}/{directory}"  
                 try:
                     response = requests.get(url, timeout=5)
-                    # Check for 200 OK or any 3xx redirect status codes
                     if response.status_code == 200 or (300 <= response.status_code < 400):
                         with self.lock:
                             self.alive_directories.append(url)
@@ -95,7 +94,7 @@ class VulnerabilityScanner:
             t.start()
 
         for t in threading.enumerate():
-            if t is not threading.currentThread():
+            if t is not threading.current_Thread():
                 t.join()
 
     def fuzz_parameters(self):
@@ -111,11 +110,9 @@ class VulnerabilityScanner:
             print(Fore.RED + "Error: php_files.txt not found!" + Style.RESET_ALL)
             return
 
-        # Read parameters
         with open(param_file, 'r') as f:
             params = [line.strip() for line in f.readlines()]
 
-        # Read PHP files
         with open(php_file, 'r') as f:
             php_files = [line.strip() for line in f.readlines()]
 
