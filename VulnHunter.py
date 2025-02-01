@@ -110,7 +110,7 @@ class VulnerabilityScanner:
             t.start()
 
         for t in threading.enumerate():
-            if t is not threading.currentThread():
+            if t is not threading.current_thread():
                 t.join()
 
     def fuzz_parameters(self):
