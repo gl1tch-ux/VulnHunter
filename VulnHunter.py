@@ -81,7 +81,8 @@ class VulnerabilityScanner:
                 url = f"{subdomain}/{directory}"  
                 try:
                     response = requests.get(url, timeout=5)
-                    if response.status_code == 200:
+                    # Check for 200 OK or any 3xx redirect status codes
+                    if response.status_code == 200 or (300 <= response.status_code < 400):
                         with self.lock:
                             self.alive_directories.append(url)
                         print(Fore.GREEN + f"Found alive directory: {url}" + Style.RESET_ALL)
@@ -100,23 +101,36 @@ class VulnerabilityScanner:
     def fuzz_parameters(self):
         print("[*] Start fuzzing params...")
         param_file = os.path.join(self.payloads_dir, "params.txt")
+        php_file = os.path.join(self.payloads_dir, "php_files.txt")
+        
         if not os.path.exists(param_file):
             print(Fore.RED + "Error: params.txt not found!" + Style.RESET_ALL)
             return
 
+        if not os.path.exists(php_file):
+            print(Fore.RED + "Error: php_files.txt not found!" + Style.RESET_ALL)
+            return
+
+        # Read parameters
+        with open(param_file, 'r') as f:
+            params = [line.strip() for line in f.readlines()]
+
+        # Read PHP files
+        with open(php_file, 'r') as f:
+            php_files = [line.strip() for line in f.readlines()]
+
         def fuzz_params_for_subdomain(subdomain):
-            with open(param_file, 'r') as f:
-                params = [line.strip() for line in f.readlines()]
-            for param in params:
-                fuzz_url = f"{subdomain}?{param}=FUZZ"
-                try:
-                    response = requests.get(fuzz_url, timeout=5)
-                    if response.status_code == 200:
-                        with self.lock:
-                            self.fuzzed_params.append(fuzz_url)
-                        print(Fore.GREEN + f"Working parameter: {fuzz_url}" + Style.RESET_ALL)
-                except:
-                    continue
+            for php_file in php_files:
+                for param in params:
+                    fuzz_url = f"{subdomain}/{php_file}?{param}=FUZZ"
+                    try:
+                        response = requests.get(fuzz_url, timeout=5)
+                        if response.status_code == 200:
+                            with self.lock:
+                                self.fuzzed_params.append(fuzz_url)
+                            print(Fore.GREEN + f"Working parameter: {fuzz_url}" + Style.RESET_ALL)
+                    except requests.RequestException:
+                        continue
 
         threads = []
         for subdomain in self.alive_subdomains:
@@ -439,7 +453,6 @@ class VulnerabilityScanner:
         self.scan_ssrf()
         self.scan_xxe()
         if self.wordlist:
-            
             pass
         self.save_results()
         self.display_results()
