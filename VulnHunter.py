@@ -78,7 +78,7 @@ class VulnerabilityScanner:
 
         def worker(subdomain):
             for directory in directories:
-                url = f"{subdomain}/{directory}"  
+                url = f"{subdomain}{directory}"  
                 try:
                     response = requests.get(url, timeout=5)
                     if response.status_code == 200 or (300 <= response.status_code < 400):
@@ -119,7 +119,7 @@ class VulnerabilityScanner:
         def fuzz_params_for_subdomain(subdomain):
             for php_file in php_files:
                 for param in params:
-                    fuzz_url = f"{subdomain}/{php_file}?{param}=FUZZ"
+                    fuzz_url = f"{subdomain}/{php_file}{param}"
                     try:
                         response = requests.get(fuzz_url, timeout=5)
                         if response.status_code == 200:
