@@ -7,6 +7,7 @@ import threading
 from queue import Queue
 from colorama import Fore, Style
 import logging
+from bs4 import BeautifulSoup
 
 VERSION = "1.5"
 
@@ -36,6 +37,10 @@ class VulnerabilityScanner:
         self.alive_directories = []
         self.results = []
         self.lock = threading.Lock()
+        self.subdomain_limit = 100
+        self.dir_limit = 100
+        self.php_limit = 100
+        self.param_limit = 100
 
     def update_code(self):
         print("[*] Updating code from GitHub repository...")
@@ -44,6 +49,19 @@ class VulnerabilityScanner:
             print(Fore.GREEN + "[*] Code updated successfully!" + Style.RESET_ALL)
         except subprocess.CalledProcessError as e:
             print(Fore.RED + f"Error updating code: {e}" + Style.RESET_ALL)
+
+    def extract_links(self, url):
+        try:
+            response = requests.get(url, timeout=5)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            links = []
+            for link in soup.find_all('a'):
+                href = link.get('href')
+                if href and href.startswith('http'):
+                    links.append(href)
+            return links
+        except requests.RequestException:
+            return []
 
     def fuzz_subdomains(self):
         print("[*] Start fuzzing subdomains...")
@@ -66,6 +84,13 @@ class VulnerabilityScanner:
                             with self.lock:
                                 self.alive_subdomains.append(subdomain_url)
                             print(Fore.GREEN + f"Found active subdomain: {subdomain_url}" + Style.RESET_ALL)
+                            links = self.extract_links(subdomain_url)
+                            with self.lock:
+                                self.alive_subdomains.extend(links)
+                            print(Fore.GREEN + f"Found {len(links)} links on {subdomain_url}" + Style.RESET_ALL)
+                            if len(self.alive_subdomains) >= self.subdomain_limit:
+                                subdomain_queue.task_done()
+                                return
                             break
                     except requests.RequestException:
                         continue
@@ -101,6 +126,8 @@ class VulnerabilityScanner:
                         with self.lock:
                             self.alive_directories.append(url)
                         print(Fore.GREEN + f"Found alive directory: {url}" + Style.RESET_ALL)
+                        if len(self.alive_directories) >= self.dir_limit:
+                            return
                 except requests.RequestException:
                     continue
 
@@ -125,13 +152,15 @@ class VulnerabilityScanner:
 
         def worker(subdomain):
             for php_file in php_files:
-                url = f"{subdomain}/{php_file}"
+                url = f"{subdomain}{php_file}"
                 try:
                     response = requests.get(url, timeout=5)
                     if response.status_code == 200 or (300 <= response.status_code < 400):
                         with self.lock:
                             self.alive_php_files.append(url)
                         print(Fore.GREEN + f"Found alive PHP file: {url}" + Style.RESET_ALL)
+                        if len(self.alive_php_files) >= self.php_limit:
+                            return
                 except requests.RequestException:
                     continue
 
@@ -165,6 +194,8 @@ class VulnerabilityScanner:
                             with self.lock:
                                 self.fuzzed_params.append(fuzz_url)
                             print(Fore.GREEN + f"Working parameter: {fuzz_url}" + Style.RESET_ALL)
+                            if len(self.fuzzed_params) >= self.param_limit:
+                                return
                     except requests.RequestException:
                         continue
 
@@ -504,9 +535,11 @@ if __name__ == "__main__":
     parser.add_argument("-w", "--wordlist", help="Wordlist of URLs to scan (optional)")
     parser.add_argument("-t", "--threads", type=int, default=10, help="Number of threads (default: 10)")
     parser.add_argument("--update", action='store_true', help="Update the code from the GitHub repository")
+    parser.add_argument("-l", "--limits", type=int, nargs=4, default=[100, 100, 100, 100], help="Limits for subdomains, directories, PHP files, and parameters (default: 100 100 100 100)")
     args = parser.parse_args()
 
     scanner = VulnerabilityScanner(args.host, args.payloads_dir, args.output, args.wordlist, args.threads)
     if args.update:
         scanner.update_code()
+    scanner.subdomain_limit, scanner.dir_limit, scanner.php_limit, scanner.param_limit = args.limits
     scanner.start_scan()
