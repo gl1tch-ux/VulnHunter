@@ -1,11 +1,5 @@
-print(""" __      __    _       _    _             _            
- \ \    / /   | |     | |  | |           | |           
-  \ \  / /   _| |_ __ | |__| |_   _ _ __ | |_ ___ _ __ 
-   \ \/ / | | | | '_ \|  __  | | | | '_ \| __/ _ \ '__|
-    \  /| |_| | | | | | |  | | |_| | | | | ||  __/ |   
-     \/  \__,_|_|_| |_|_|  |_|\__,_|_| |_|\__\___|_|   
-                                                       
-                                  1.0                By Glitch01     """)                                              
+import uuid
+import subprocess
 import argparse
 import requests
 import os
@@ -13,6 +7,20 @@ import threading
 from queue import Queue
 from colorama import Fore, Style
 import logging
+
+VERSION = "1.0"
+UNIQUE_ID = str(uuid.uuid4())
+
+print(f"Vulnerability Scanner - Version: {VERSION}, ID: {UNIQUE_ID}")
+
+print(""" __      __    _       _    _             _            
+ \ \    / /   | |     | |  | |           | |           
+  \ \  / /   _| |_ __ | |__| |_   _ _ __ | |_ ___ _ __ 
+   \ \/ / | | | | '_ \|  __  | | | | '_ \| __/ _ \ '__|
+    \  /| |_| | | | | | |  | | |_| | | | | ||  __/ |   
+     \/  \__,_|_|_| |_|_|  |_|\__,_|_| |_|\__\___|_|   
+                                                       
+                                  1.0                By Glitch01     """)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -28,6 +36,14 @@ class VulnerabilityScanner:
         self.alive_directories = []
         self.results = []
         self.lock = threading.Lock()
+
+    def update_code(self):
+        print("[*] Updating code from GitHub repository...")
+        try:
+            subprocess.run(["git", "pull"], check=True)
+            print(Fore.GREEN + "[*] Code updated successfully!" + Style.RESET_ALL)
+        except subprocess.CalledProcessError as e:
+            print(Fore.RED + f"Error updating code: {e}" + Style.RESET_ALL)
 
     def fuzz_subdomains(self):
         print("[*] Start fuzzing subdomains...")
@@ -51,7 +67,7 @@ class VulnerabilityScanner:
                                 self.alive_subdomains.append(subdomain_url)
                             print(Fore.GREEN + f"Found active subdomain: {subdomain_url}" + Style.RESET_ALL)
                             break
-                    except requests.RequestException as e:
+                    except requests.RequestException:
                         continue
                 subdomain_queue.task_done()
 
@@ -78,7 +94,7 @@ class VulnerabilityScanner:
 
         def worker(subdomain):
             for directory in directories:
-                url = f"{subdomain}{directory}"  
+                url = f"{subdomain}/{directory}"  
                 try:
                     response = requests.get(url, timeout=5)
                     if response.status_code == 200 or (300 <= response.status_code < 400):
@@ -94,7 +110,7 @@ class VulnerabilityScanner:
             t.start()
 
         for t in threading.enumerate():
-            if t is not threading.current_Thread():
+            if t is not threading.currentThread():
                 t.join()
 
     def fuzz_parameters(self):
@@ -119,7 +135,7 @@ class VulnerabilityScanner:
         def fuzz_params_for_subdomain(subdomain):
             for php_file in php_files:
                 for param in params:
-                    fuzz_url = f"{subdomain}/{php_file}{param}"
+                    fuzz_url = f"{subdomain}/{php_file}?{param}=FUZZ"
                     try:
                         response = requests.get(fuzz_url, timeout=5)
                         if response.status_code == 200:
@@ -164,7 +180,7 @@ class VulnerabilityScanner:
                         print(Fore.GREEN + f"[SQL Injection] Vulnerability found: {vuln_url}" + Style.RESET_ALL)
                         vulnerable = True
                         break
-                except:
+                except requests.RequestException:
                     continue
             if not vulnerable:
                 print(Fore.RED + f"[SQL Injection] Not vulnerable: {fuzz_url}" + Style.RESET_ALL)
@@ -204,7 +220,7 @@ class VulnerabilityScanner:
                         print(Fore.GREEN + f"[XSS] Vulnerability found: {vuln_url}" + Style.RESET_ALL)
                         vulnerable = True
                         break
-                except:
+                except requests.RequestException:
                     continue
             if not vulnerable:
                 print(Fore.RED + f"[XSS] Not vulnerable: {fuzz_url}" + Style.RESET_ALL)
@@ -244,7 +260,7 @@ class VulnerabilityScanner:
                         print(Fore.GREEN + f"[RCE] Vulnerability found: {vuln_url}" + Style.RESET_ALL)
                         vulnerable = True
                         break
-                except:
+                except requests.RequestException:
                     continue
             if not vulnerable:
                 print(Fore.RED + f"[RCE] Not vulnerable: {fuzz_url}" + Style.RESET_ALL)
@@ -284,7 +300,7 @@ class VulnerabilityScanner:
                         print(Fore.GREEN + f"[LFI] Vulnerability found: {vuln_url}" + Style.RESET_ALL)
                         vulnerable = True
                         break
-                except:
+                except requests.RequestException:
                     continue
             if not vulnerable:
                 print(Fore.RED + f"[LFI] Not vulnerable: {fuzz_url}" + Style.RESET_ALL)
@@ -324,7 +340,7 @@ class VulnerabilityScanner:
                         print(Fore.GREEN + f"[RFI] Vulnerability found: {vuln_url}" + Style.RESET_ALL)
                         vulnerable = True
                         break
-                except:
+                except requests.RequestException:
                     continue
             if not vulnerable:
                 print(Fore.RED + f"[RFI] Not vulnerable: {fuzz_url}" + Style.RESET_ALL)
@@ -364,7 +380,7 @@ class VulnerabilityScanner:
                         print(Fore.GREEN + f"[SSRF] Vulnerability found: {vuln_url}" + Style.RESET_ALL)
                         vulnerable = True
                         break
-                except:
+                except requests.RequestException:
                     continue
             if not vulnerable:
                 print(Fore.RED + f"[SSRF] Not vulnerable: {fuzz_url}" + Style.RESET_ALL)
@@ -404,7 +420,7 @@ class VulnerabilityScanner:
                         print(Fore.GREEN + f"[XXE] Vulnerability found: {vuln_url}" + Style.RESET_ALL)
                         vulnerable = True
                         break
-                except:
+                except requests.RequestException:
                     continue
             if not vulnerable:
                 print(Fore.RED + f"[XXE] Not vulnerable: {fuzz_url}" + Style.RESET_ALL)
@@ -437,7 +453,9 @@ class VulnerabilityScanner:
         else:
             print(Fore.YELLOW + "No vulnerabilities found." + Style.RESET_ALL)
 
-    def start_scan(self):
+    def start_scan(self, update=False):
+        if update:
+            self.update_code()
         self.fuzz_subdomains()
         self.brute_force_directories()
         print("[*] Starting vulnerability scans...")
@@ -461,7 +479,8 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", required=True, help="Output file for results")
     parser.add_argument("-w", "--wordlist", help="Wordlist of URLs to scan (optional)")
     parser.add_argument("-t", "--threads", type=int, default=10, help="Number of threads (default: 10)")
+    parser.add_argument("--update", action='store_true', help="Update the code from the GitHub repository")
     args = parser.parse_args()
 
     scanner = VulnerabilityScanner(args.host, args.payloads_dir, args.output, args.wordlist, args.threads)
-    scanner.start_scan()
+    scanner.start_scan(update=args.update)
