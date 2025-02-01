@@ -482,5 +482,9 @@ if __name__ == "__main__":
     parser.add_argument("--update", action='store_true', help="Update the code from the GitHub repository")
     args = parser.parse_args()
 
-    scanner = VulnerabilityScanner(args.host, args.payloads_dir, args.output, args.wordlist, args.threads)
-    scanner.start_scan(update=args.update)
+    if args.update:
+        scanner = VulnerabilityScanner("", "", "", "", 0)
+        scanner.update_code()
+    else:
+        scanner = VulnerabilityScanner(args.host, args.payloads_dir, args.output, args.wordlist, args.threads)
+        scanner.start_scan(update=args.update)
