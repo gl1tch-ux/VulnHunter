@@ -9,8 +9,9 @@ from colorama import Fore, Style
 import logging
 
 VERSION = "1.0"
+UNIQUE_ID = str(uuid.uuid4())
 
-print(f"Vulnerability Scanner - Version: {VERSION}")
+print(f"Vulnerability Scanner - Version: {VERSION}, ID: {UNIQUE_ID}")
 
 print(""" __      __    _       _    _             _            
  \ \    / /   | |     | |  | |           | |           
@@ -93,7 +94,7 @@ class VulnerabilityScanner:
 
         def worker(subdomain):
             for directory in directories:
-                url = f"{subdomain}/{directory}"  
+                url = f"{subdomain}{directory}"  
                 try:
                     response = requests.get(url, timeout=5)
                     if response.status_code == 200 or (300 <= response.status_code < 400):
@@ -134,7 +135,7 @@ class VulnerabilityScanner:
         def fuzz_params_for_subdomain(subdomain):
             for php_file in php_files:
                 for param in params:
-                    fuzz_url = f"{subdomain}/{php_file}?{param}=FUZZ"
+                    fuzz_url = f"{subdomain}{php_file}{param}FUZZ"
                     try:
                         response = requests.get(fuzz_url, timeout=5)
                         if response.status_code == 200:
