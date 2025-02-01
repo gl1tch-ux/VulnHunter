@@ -125,7 +125,7 @@ class VulnerabilityScanner:
 
         def worker(subdomain):
             for php_file in php_files:
-                url = f"{subdomain}{php_file}"
+                url = f"{subdomain}/{php_file}"
                 try:
                     response = requests.get(url, timeout=5)
                     if response.status_code == 200 or (300 <= response.status_code < 400):
