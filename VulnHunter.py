@@ -82,36 +82,36 @@ class VulnerabilityScanner:
 
         subdomain_queue.join()
 
-    def brute_force_directories(self):
-        print("[*] Start brute-forcing directories from alive subdomains...")
-        dir_file = os.path.join(self.payloads_dir, "dir.txt")
-        if not os.path.exists(dir_file):
-            print(Fore.RED + "Error: dir.txt not found!" + Style.RESET_ALL)
-            return
+def brute_force_directories(self):
+    print("[*] Start brute-forcing directories from alive subdomains...")
+    dir_file = os.path.join(self.payloads_dir, "dir.txt")
+    if not os.path.exists(dir_file):
+        print(Fore.RED + "Error: dir.txt not found!" + Style.RESET_ALL)
+        return
 
-        with open(dir_file, 'r') as f:
-            directories = [line.strip() for line in f.readlines()]
+    with open(dir_file, 'r') as f:
+        directories = [line.strip() for line in f.readlines()]
 
-        def worker(subdomain):
-            for directory in directories:
-                url = f"{subdomain}{directory}"  
-                try:
-                    response = requests.get(url, timeout=5)
-                    if response.status_code == 200 or (300 <= response.status_code < 400):
-                        with self.lock:
- self.alive_directories.append(url)
-                        print(Fore.GREEN + f"Found alive directory: {url}" + Style.RESET_ALL)
-                except requests.RequestException:
-                    continue
+    def worker(subdomain):
+        for directory in directories:
+            url = f"{subdomain}{directory}"  
+            try:
+                response = requests.get(url, timeout=5)
+                if response.status_code == 200 or (300 <= response.status_code < 400):
+                    with self.lock:
+                        self.alive_directories.append(url)
+                    print(Fore.GREEN + f"Found alive directory: {url}" + Style.RESET_ALL)
+            except requests.RequestException:
+                continue
 
-        for subdomain in self.alive_subdomains:
-            t = threading.Thread(target=worker, args=(subdomain,))
-            t.daemon = True
-            t.start()
+    for subdomain in self.alive_subdomains:
+        t = threading.Thread(target=worker, args=(subdomain,))
+        t.daemon = True
+        t.start()
 
-        for t in threading.enumerate():
-            if t is not threading.currentThread():
-                t.join()
+    for t in threading.enumerate():
+        if t is not threading.currentThread():
+            t.join()
 
     def brute_force_php_files(self):
         print("[*] Start brute-forcing PHP files from alive subdomains...")
