@@ -9,8 +9,9 @@ from colorama import Fore, Style
 import logging
 
 VERSION = "1.0"
+UNIQUE_ID = str(uuid.uuid4())
 
-print(f"Vulnerability Scanner - Version: {VERSION}")
+print(f"Vulnerability Scanner - Version: {VERSION}, ID: {UNIQUE_ID}")
 
 print(""" __      __    _       _    _             _            
  \ \    / /   | |     | |  | |           | |           
@@ -33,6 +34,7 @@ class VulnerabilityScanner:
         self.alive_subdomains = []
         self.fuzzed_params = []
         self.alive_php_files = []
+        self.alive_directories = []
         self.results = []
         self.lock = threading.Lock()
 
@@ -80,6 +82,37 @@ class VulnerabilityScanner:
             t.start()
 
         subdomain_queue.join()
+
+    def brute_force_directories(self):
+        print("[*] Start brute-forcing directories from alive subdomains...")
+        dir_file = os.path.join(self.payloads_dir, "dir.txt")
+        if not os.path.exists(dir_file):
+            print(Fore.RED + "Error: dir.txt not found!" + Style.RESET_ALL)
+            return
+
+        with open(dir_file, 'r') as f:
+            directories = [line.strip() for line in f.readlines()]
+
+        def worker(subdomain):
+            for directory in directories:
+                url = f"{subdomain}{directory}"  
+                try:
+                    response = requests.get(url, timeout=5)
+                    if response.status_code == 200 or (300 <= response.status_code < 400):
+                        with self.lock:
+ self.alive_directories.append(url)
+                        print(Fore.GREEN + f"Found alive directory: {url}" + Style.RESET_ALL)
+                except requests.RequestException:
+                    continue
+
+        for subdomain in self.alive_subdomains:
+            t = threading.Thread(target=worker, args=(subdomain,))
+            t.daemon = True
+            t.start()
+
+        for t in threading.enumerate():
+            if t is not threading.currentThread():
+                t.join()
 
     def brute_force_php_files(self):
         print("[*] Start brute-forcing PHP files from alive subdomains...")
@@ -144,6 +177,16 @@ class VulnerabilityScanner:
 
         for thread in threads:
             thread.join()
+
+    def scan_vulnerabilities(self):
+        print("[*] Starting vulnerability scans...")
+        self.scan_sqli()
+        self.scan_xss()
+        self.scan_rce()
+        self.scan_lfi()
+        self.scan_rfi()
+        self.scan_ssrf()
+        self.scan_xxe()
 
     def scan_sqli(self):
         print("[*] Start scanning for SQL injection vulnerabilities...")
@@ -444,16 +487,11 @@ class VulnerabilityScanner:
         if update:
             self.update_code()
         self.fuzz_subdomains()
+        self.brute_force_directories()
         self.brute_force_php_files()
-        print("[*] Starting vulnerability scans...")
+        print("[*] Starting parameter fuzzing...")
         self.fuzz_parameters()
-        self.scan_sqli()
-        self.scan_xss()
-        self.scan_rce()
-        self.scan_lfi()
-        self.scan_rfi()
-        self.scan_ssrf()
-        self.scan_xxe()
+        self.scan_vulnerabilities()
         if self.wordlist:
             pass
         self.save_results()
