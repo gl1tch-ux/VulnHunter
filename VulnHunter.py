@@ -33,7 +33,7 @@ class VulnerabilityScanner:
         self.threads = threads
         self.alive_subdomains = []
         self.fuzzed_params = []
-        self.alive_directories = []
+        self.alive_php_files = []
         self.results = []
         self.lock = threading.Lock()
 
@@ -82,25 +82,25 @@ class VulnerabilityScanner:
 
         subdomain_queue.join()
 
-    def brute_force_directories(self):
-        print("[*] Start brute-forcing directories from alive subdomains...")
-        dir_file = os.path.join(self.payloads_dir, "dir.txt")
-        if not os.path.exists(dir_file):
-            print(Fore.RED + "Error: dir.txt not found!" + Style.RESET_ALL)
+    def brute_force_php_files(self):
+        print("[*] Start brute-forcing PHP files from alive subdomains...")
+        php_file_list = os.path.join(self.payloads_dir, "php_files.txt")
+        if not os.path.exists(php_file_list):
+            print(Fore.RED + "Error: php_files.txt not found!" + Style.RESET_ALL)
             return
 
-        with open(dir_file, 'r') as f:
-            directories = [line.strip() for line in f.readlines()]
+        with open(php_file_list, 'r') as f:
+            php_files = [line.strip() for line in f.readlines()]
 
         def worker(subdomain):
-            for directory in directories:
-                url = f"{subdomain}{directory}"  
+            for php_file in php_files:
+                url = f"{subdomain}{php_file}"
                 try:
                     response = requests.get(url, timeout=5)
                     if response.status_code == 200 or (300 <= response.status_code < 400):
                         with self.lock:
-                            self.alive_directories.append(url)
-                        print(Fore.GREEN + f"Found alive directory: {url}" + Style.RESET_ALL)
+                            self.alive_php_files.append(url)
+                        print(Fore.GREEN + f"Found alive PHP file: {url}" + Style.RESET_ALL)
                 except requests.RequestException:
                     continue
 
@@ -110,32 +110,24 @@ class VulnerabilityScanner:
             t.start()
 
         for t in threading.enumerate():
-            if t is not threading.current_thread():
+            if t is not threading.currentThread():
                 t.join()
 
     def fuzz_parameters(self):
         print("[*] Start fuzzing params...")
         param_file = os.path.join(self.payloads_dir, "params.txt")
-        php_file = os.path.join(self.payloads_dir, "php_files.txt")
         
         if not os.path.exists(param_file):
             print(Fore.RED + "Error: params.txt not found!" + Style.RESET_ALL)
             return
 
-        if not os.path.exists(php_file):
-            print(Fore.RED + "Error: php_files.txt not found!" + Style.RESET_ALL)
-            return
-
         with open(param_file, 'r') as f:
             params = [line.strip() for line in f.readlines()]
 
-        with open(php_file, 'r') as f:
-            php_files = [line.strip() for line in f.readlines()]
-
-        def fuzz_params_for_subdomain(subdomain):
-            for php_file in php_files:
+        def fuzz_params_for_php_file():
+            for php_file in self.alive_php_files:
                 for param in params:
-                    fuzz_url = f"{subdomain}{php_file}{param}FUZZ"
+                    fuzz_url = f"{php_file}{param}FUZZ"
                     try:
                         response = requests.get(fuzz_url, timeout=5)
                         if response.status_code == 200:
@@ -146,14 +138,10 @@ class VulnerabilityScanner:
                         continue
 
         threads = []
-        for subdomain in self.alive_subdomains:
-            t = threading.Thread(target=fuzz_params_for_subdomain, args=(subdomain,))
+        for _ in range(self.threads):
+            t = threading.Thread(target=fuzz_params_for_php_file)
             threads.append(t)
             t.start()
-            if len(threads) >= self.threads:
-                for thread in threads:
-                    thread.join()
-                threads = []
 
         for thread in threads:
             thread.join()
@@ -457,7 +445,7 @@ class VulnerabilityScanner:
         if update:
             self.update_code()
         self.fuzz_subdomains()
-        self.brute_force_directories()
+        self.brute_force_php_files()
         print("[*] Starting vulnerability scans...")
         self.fuzz_parameters()
         self.scan_sqli()
