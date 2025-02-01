@@ -9,9 +9,8 @@ from colorama import Fore, Style
 import logging
 
 VERSION = "1.0"
-UNIQUE_ID = str(uuid.uuid4())
 
-print(f"Vulnerability Scanner - Version: {VERSION}, ID: {UNIQUE_ID}")
+print(f"Vulnerability Scanner - Version: {VERSION}")
 
 print(""" __      __    _       _    _             _            
  \ \    / /   | |     | |  | |           | |           
