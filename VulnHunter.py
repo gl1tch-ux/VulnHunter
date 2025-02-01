@@ -5,7 +5,7 @@ print(""" __      __    _       _    _             _
     \  /| |_| | | | | | |  | | |_| | | | | ||  __/ |   
      \/  \__,_|_|_| |_|_|  |_|\__,_|_| |_|\__\___|_|   
                                                        
-                                                       """)                                              
+                                  1.0                By Glitch01     """)                                              
 import argparse
 import requests
 import os
