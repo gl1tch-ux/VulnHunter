@@ -1,4 +1,5 @@
 index.php
+artists.php
 login.php
 logout.php
 register.php
