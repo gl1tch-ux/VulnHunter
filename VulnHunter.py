@@ -9,7 +9,7 @@ from colorama import Fore, Style
 import logging
 from bs4 import BeautifulSoup
 
-VERSION = "1.5"
+VERSION = "1.6"
 
 print(f"Vulnerability Scanner - Version: {VERSION}")
 
@@ -25,12 +25,13 @@ print(""" __      __    _       _    _             _
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 class VulnerabilityScanner:
-    def __init__(self, host, payloads_dir, output_file, wordlist, threads):
+    def __init__(self, host, payloads_dir, output_file, wordlist, threads, selected_vulns):
         self.host = host
         self.payloads_dir = payloads_dir
         self.output_file = output_file
         self.wordlist = wordlist
         self.threads = threads
+        self.selected_vulns = selected_vulns
         self.alive_subdomains = []
         self.fuzzed_params = []
         self.alive_php_files = []
@@ -193,13 +194,20 @@ class VulnerabilityScanner:
 
     def scan_vulnerabilities(self):
         print("[*] Starting vulnerability scans...")
-        self.scan_sqli()
-        self.scan_xss()
-        self.scan_rce()
-        self.scan_lfi()
-        self.scan_rfi()
-        self.scan_ssrf()
-        self.scan_xxe()
+        if "sqli" in self.selected_vulns or "all" in self.selected_vulns:
+            self.scan_sqli()
+        if "xss" in self.selected_vulns or "all" in self.selected_vulns:
+            self.scan_xss()
+        if "rce" in self.selected_vulns or "all" in self.selected_vulns:
+            self.scan_rce()
+        if "lfi" in self.selected_vulns or "all" in self.selected_vulns:
+            self.scan_lfi()
+        if "rfi" in self.selected_vulns or "all" in self.selected_vulns:
+            self.scan_rfi()
+        if "ssrf" in self.selected_vulns or "all" in self.selected_vulns:
+            self.scan_ssrf()
+        if "xxe" in self.selected_vulns or "all" in self.selected_vulns:
+            self.scan_xxe()
 
     def scan_sqli(self):
         print("[*] Start scanning for SQL injection vulnerabilities...")
@@ -520,9 +528,12 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--threads", type=int, default=10, help="Number of threads (default: 10)")
     parser.add_argument("--update", action='store_true', help="Update the code from the GitHub repository")
     parser.add_argument("-l", "--limits", type=int, nargs='?', default=100, help="Limit for subdomains, directories, PHP files, and parameters (default: 100)")
+    parser.add_argument("--vulns", type=str, default="all", help="Comma-separated list of vulnerabilities to scan (e.g., sqli,xss,rce) or 'all' for all vulnerabilities")
     args = parser.parse_args()
 
-    scanner = VulnerabilityScanner(args.host, args.payloads_dir, args.output, args.wordlist, args.threads)
+    selected_vulns = args.vulns.split(",") if args.vulns != "all" else ["all"]
+
+    scanner = VulnerabilityScanner(args.host, args.payloads_dir, args.output, args.wordlist, args.threads, selected_vulns)
     if args.update:
         scanner.update_code()
     scanner.subdomain_limit = args.limits
