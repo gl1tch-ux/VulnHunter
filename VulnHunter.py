@@ -9,11 +9,11 @@ from colorama import Fore, Style
 import logging
 from bs4 import BeautifulSoup
 
-VERSION = "1.6"
+VERSION = "1.7"
 
 print(f"Vulnerability Scanner - Version: {VERSION}")
 
-print(""" __      __    _       _    _             _            
+print(""" __      __    _       _    _             _        
  \ \    / /   | |     | |  | |           | |           
   \ \  / /   _| |_ __ | |__| |_   _ _ __ | |_ ___ _ __ 
    \ \/ / | | | | '_ \|  __  | | | | '_ \| __/ _ \ '__|
@@ -204,8 +204,6 @@ class VulnerabilityScanner:
             self.scan_lfi()
         if "rfi" in self.selected_vulns or "all" in self.selected_vulns:
             self.scan_rfi()
-        if "ssrf" in self.selected_vulns or "all" in self.selected_vulns:
-            self.scan_ssrf()
         if "xxe" in self.selected_vulns or "all" in self.selected_vulns:
             self.scan_xxe()
 
@@ -399,46 +397,6 @@ class VulnerabilityScanner:
         threads = []
         for fuzz_url in self.fuzzed_params:
             t = threading.Thread(target=scan_for_rfi, args=(fuzz_url,))
-            threads.append(t)
-            t.start()
-            if len(threads) >= self.threads:
-                for thread in threads:
-                    thread.join()
-                threads = []
-
-        for thread in threads:
-            thread.join()
-
-    def scan_ssrf(self):
-        print("[*] Start scanning for SSRF vulnerabilities...")
-        ssrf_file = os.path.join(self.payloads_dir, "SSRF.txt")
-        if not os.path.exists(ssrf_file):
-            print(Fore.RED + "Error: SSRF.txt not found!" + Style.RESET_ALL)
-            return
-
-        with open(ssrf_file, 'r') as f:
-            payloads = [line.strip() for line in f.readlines()]
-
-        def scan_for_ssrf(fuzz_url):
-            vulnerable = False
-            for payload in payloads:
-                vuln_url = fuzz_url.replace("FUZZ", payload)
-                try:
-                    response = requests.get(vuln_url, timeout=5)
-                    if "http://" in response.text or "https://" in response.text:
-                        with self.lock:
-                            self.results.append(f"[SSRF] Vulnerability found: {vuln_url}")
-                        print(Fore.GREEN + f"[SSRF] Vulnerability found: {vuln_url}" + Style.RESET_ALL)
-                        vulnerable = True
-                        break
-                except requests.RequestException:
-                    continue
-            if not vulnerable:
-                print(Fore.RED + f"[SSRF] Not vulnerable: {fuzz_url}" + Style.RESET_ALL)
-
-        threads = []
-        for fuzz_url in self.fuzzed_params:
-            t = threading.Thread(target=scan_for_ssrf, args=(fuzz_url,))
             threads.append(t)
             t.start()
             if len(threads) >= self.threads:
