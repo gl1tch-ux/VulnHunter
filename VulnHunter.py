@@ -42,6 +42,14 @@ class VulnerabilityScanner:
         self.dir_limit = 100
         self.php_limit = 100
         self.param_limit = 100
+        self.cve_dir = None
+        self.cve_templates = []
+
+    def load_cve_templates(self, cve_dir):
+        if not os.path.exists(cve_dir):
+            print(Fore.RED + "Error: CVE directory not found!" + Style.RESET_ALL)
+            return []
+        return [f for f in os.listdir(cve_dir) if f.endswith(".yaml")]
 
     def update_code(self):
         print("[*] Updating code from GitHub repository...")
@@ -206,6 +214,8 @@ class VulnerabilityScanner:
             self.scan_rfi()
         if "xxe" in self.selected_vulns or "all" in self.selected_vulns:
             self.scan_xxe()
+        if "cve" in self.selected_vulns or "all" in self.selected_vulns:
+            self.scan_cve()
 
     def scan_sqli(self):
         print("[*] Start scanning for SQL injection vulnerabilities...")
@@ -447,6 +457,16 @@ class VulnerabilityScanner:
         for thread in threads:
             thread.join()
 
+    def scan_cve(self):
+        print("[*] Starting Nuclei scan for CVEs...")
+        for template in self.cve_templates:
+            try:
+                subprocess.run(["nuclei", "-t", os.path.join(self.cve_dir, template), "-silent"], check=True, stdout=subprocess.DEVNULL)
+                self.results.append(f"[CVE] Vulnerability found: {template}")
+                print(Fore.GREEN + f"[CVE] Vulnerability found: {template}" + Style.RESET_ALL)
+            except subprocess.CalledProcessError:
+                print(Fore.RED + f"[CVE] No vulnerabilities found: {template}" + Style.RESET_ALL)
+
     def save_results(self):
         if self.output_file:
             os.makedirs(os.path.dirname(self.output_file), exist_ok=True)
@@ -481,17 +501,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="The code is a tool for identifying web application vulnerabilities through multithreaded scanning.")
     parser.add_argument("-u", "--host", required=True, help="Target host/domain")
     parser.add_argument("-p", "--payloads-dir", required=True, help="Directory containing payloads")
+    parser.add_argument("-c", "--cve-dir", required=True, help="Directory containing CVE templates")
     parser.add_argument("-o", "--output", required=False, help="Output file for results (optional)")
     parser.add_argument("-w", "--wordlist", help="Wordlist of URLs to scan (optional)")
     parser.add_argument("-t", "--threads", type=int, default=10, help="Number of threads (default: 10)")
     parser.add_argument("--update", action='store_true', help="Update the code from the GitHub repository")
     parser.add_argument("-l", "--limits", type=int, nargs='?', default=100, help="Limit for subdomains, directories, PHP files, and parameters (default: 100)")
-    parser.add_argument("--vulns", type=str, default="all", help="Comma-separated list of vulnerabilities to scan (e.g., sqli,xss,rce) or 'all' for all vulnerabilities")
+    parser.add_argument("--vulns", type=str, default="all", help="Comma-separated list of vulnerabilities to scan (e.g., sqli,xss,rce,cve) or 'all' for all vulnerabilities")
     args = parser.parse_args()
 
     selected_vulns = args.vulns.split(",") if args.vulns != "all" else ["all"]
 
     scanner = VulnerabilityScanner(args.host, args.payloads_dir, args.output, args.wordlist, args.threads, selected_vulns)
+    scanner.cve_dir = args.cve_dir
+    scanner.cve_templates = scanner.load_cve_templates(scanner.cve_dir)
     if args.update:
         scanner.update_code()
     scanner.subdomain_limit = args.limits
