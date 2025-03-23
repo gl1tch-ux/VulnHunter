@@ -1,6 +1,6 @@
 # VulnHunter
 
-this code is a vulnerabilities scanner code for LFI,RFI,RCE,SQLI,XSS,XXE
+this code is a vulnerabilities scanner code for LFI,RFI,RCE,SQLI,CVE,XSS,XXE
 
 example
 
